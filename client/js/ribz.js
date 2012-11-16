@@ -2,7 +2,7 @@ window.onload = function () {
 
     //start crafty
 	var GAME_WIDTH = 800;
-	var GAME_HEIGHT = 600;
+	var GAME_HEIGHT = 640;
     var SPRITE_SIZE = 32;
     var socket = undefined;
 
@@ -14,7 +14,9 @@ window.onload = function () {
         pine: [1, 1],
         water: [0, 2],
         lava: [1, 2],
-        sword: [0, 3]
+        salmon: [0, 3],
+        sword: [0, 4],
+        fishing_pole: [1, 4]
     });
 
 	function parse_map(map_string) {
@@ -41,7 +43,9 @@ window.onload = function () {
 						w: SPRITE_SIZE,
 						h: SPRITE_SIZE
 					}));
-				}
+				} else if (character === ".") {
+                    map[y].push(undefined);
+                }
 			}
 		}
 		return map;
@@ -67,17 +71,18 @@ window.onload = function () {
         Crafty.background("#000");
         var player = undefined;
         var remote_players = {};
+        var items = {};
         var map = undefined;
 
 		socket = io.connect("76.105.244.177:8031");
-        socket.on("map", function (data) {
+        socket.on("map", function(data) {
             map = parse_map(data);
             socket.emit("join", {
                 username: "Ryland"
             });
         });
 
-        socket.on("join", function (data) {
+        socket.on("join", function(data) {
             player = Crafty.e("2D, DOM, man, CustomControls")
             .attr({
                 x: data.x * SPRITE_SIZE,
@@ -89,20 +94,34 @@ window.onload = function () {
             player.CustomControls();
         });
         
-        socket.on("populate", function (data) {
-            for (i in data) {
+        socket.on("populate", function(data) {
+            for (i in data.players) {
                 remote_players[i] = Crafty.e("2D, DOM, man")
                 .attr({
-                    x: data[i].x * SPRITE_SIZE,
-                    y: data[i].y * SPRITE_SIZE,
+                    x: data.players[i].x * SPRITE_SIZE,
+                    y: data.players[i].y * SPRITE_SIZE,
                     w: SPRITE_SIZE,
                     h: SPRITE_SIZE,
-                    username: data[i].username
+                    username: data.players[i].username
                 });
             }
+
+            for (i in data.items) {
+                if (data.items[i].item_name === "salmon") {
+                    items[i] = Crafty.e("2D, DOM, salmon")
+                    .attr({
+                        x: data.items[i].x * SPRITE_SIZE,
+                        y: data.items[i].y * SPRITE_SIZE,
+                        w: SPRITE_SIZE,
+                        h: SPRITE_SIZE,
+                        item_name: data.items[i].item_name,
+                        item_id: i
+                    });
+                }
+            }                
         });
 
-        socket.on("add_player", function (data) {
+        socket.on("add_player", function(data) {
             remote_players[data.username] = Crafty.e("2D, DOM, man")
             .attr({
                 x: data.x * SPRITE_SIZE,
@@ -113,14 +132,26 @@ window.onload = function () {
             });
         });
 
-        socket.on("move", function (data) {
+        socket.on("move", function(data) {
             player.x = data.x * SPRITE_SIZE;
             player.y = data.y * SPRITE_SIZE;
         });
 
-        socket.on("move_player", function (data) {
+        socket.on("move_player", function(data) {
             remote_players[data.username].x = data.x * SPRITE_SIZE;
             remote_players[data.username].y = data.y * SPRITE_SIZE;
+        });
+
+        socket.on("item_drop", function(data) {
+            items[data.item_id] = Crafty.e("2D, DOM, salmon")
+            .attr({
+                x: data.x * SPRITE_SIZE,
+                y: data.y * SPRITE_SIZE,
+                w: SPRITE_SIZE,
+                h: SPRITE_SIZE,
+                item_name: data.item_name,
+                item_id: data.item_id
+            });
         });
     });
 
